@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
+ * Class that initialises the CCID and sends message to it. This class assumes no knowledge about
+ * the smart card.
  * Created by benjamin on 17.04.18.
  */
 
@@ -160,10 +162,17 @@ public class CCIDReader implements Runnable {
         }
     }
 
+    /**
+     * Calls the powerOn message to the current activeSlot.
+     */
     public void powerOn() {
         powerOn(activeSlot);
     }
 
+    /**
+     * Sends the powerOn message to the smart card in the given slot.
+     * @param slot A number between zero and the number of slots (not included)
+     */
     public void powerOn(int slot) {
         if (slot < 0 || slot >= ccid.getNofSlots()) {
             log("The given slot (" + Integer.toString(slot) + ") is smaller than zero or is " +
@@ -178,7 +187,7 @@ public class CCIDReader implements Runnable {
     }
 
     private void parseDescriptors(byte[] descriptors) {
-        status = Status.INITIALISING;
+        setStatus(Status.INITIALISING);
         int index= descriptors[0];
         if (index> descriptors.length || descriptors[index] + index> descriptors.length)
             setCriticalError(EidView.Error.MALFORMED);
@@ -198,7 +207,7 @@ public class CCIDReader implements Runnable {
             parseEndpointDescriptor(Arrays.copyOfRange(descriptors, index,
                     index+descriptors[index]));
         }
-        status = Status.WAITING;
+        setStatus(Status.WAITING);
     }
 
 
@@ -271,12 +280,8 @@ public class CCIDReader implements Runnable {
         }
     }
 
-    private void setError() {
-        status = Status.ERROR;
-    }
-
     private void setCriticalError(EidView.Error error) {
-        status = Status.ERROR_CRITICAL;
+        setStatus(Status.ERROR_CRITICAL);
         criticalError = error;
     }
 
@@ -292,7 +297,7 @@ public class CCIDReader implements Runnable {
         if (status == Status.ERROR || status == Status.ERROR_CRITICAL)
             return null;
 
-        status = Status.COMMUNICATING;
+        setStatus(Status.COMMUNICATING);
         messageOut.sequence = ++lastSequence;
         byte[] mess = messageOut.getMessage();
         int sent = connection.bulkTransfer(endBulkOut, mess, mess.length, timeout);
@@ -325,7 +330,7 @@ public class CCIDReader implements Runnable {
             }
             mess.extra = header;
         }
-        status = Status.WAITING;
+        setStatus(Status.WAITING);
         return mess;
     }
 
@@ -375,6 +380,7 @@ public class CCIDReader implements Runnable {
         if (status == Status.ERROR_CRITICAL || status == Status.ERROR)
             return;
         byte[] mess = new byte[1];
+        setStatus(Status.COMMUNICATING);
         int recv = connection.bulkTransfer(endIntIn, mess, 2, timeout);
         if (recv == 1) {
             if (mess[0] == 0x50) {
@@ -407,6 +413,7 @@ public class CCIDReader implements Runnable {
                 status = Status.ERROR;
             }
         }
+        setStatus(Status.WAITING);
     }
 
     /**
@@ -423,6 +430,11 @@ public class CCIDReader implements Runnable {
                     smartCards[i * 4 + j] = HelperFunc.getBit(state, j) ? 1 : 2;
             }
         }
+    }
+
+    private void setStatus(Status status) {
+        this.status = status;
+        EidView.handler.obtainMessage(EidHandler.MES_STA, status).sendToTarget();
     }
 
     enum Status {

@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
 import android.os.Bundle;
+import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.TextView;
 
@@ -20,6 +21,7 @@ public class EidView extends AppCompatActivity {
     static final String GET_DATA= "data";
     private static final String ACTION_USB_PERMISSION = "be.benim.eid.USB_PERMISSION";
 
+    static  final EidHandler handler= new EidHandler(Looper.getMainLooper());
     private UsbDevice device= null;
     private UsbManager manager= null;
     private EidData data= null;
@@ -44,6 +46,10 @@ public class EidView extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
         registerReceiver(mUsbReceiver, filter);
         parseIntent(getIntent());
+    }
+
+    static EidHandler getHandler() {
+        return handler;
     }
 
     @Override
