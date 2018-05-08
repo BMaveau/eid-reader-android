@@ -11,31 +11,20 @@ import android.widget.TextView;
  */
 
 class EidReader {
-    EidView eidView;
-    TextView log;
-
-
     private CCIDReader reader;
 
-    EidReader(EidView eidView, TextView log) {
-        this.eidView = eidView;
-        this.log = log;
+    EidReader() {
     }
 
     void init(UsbManager manager, UsbDevice device) {
         UsbDeviceConnection connection= manager.openDevice(device);
         UsbInterface usbInterface= device.getInterface(0);
         connection.claimInterface(usbInterface, true);
-        reader = new CCIDReader(connection, usbInterface, log);
+        reader = new CCIDReader(connection, usbInterface);
         reader.run();
     }
 
     void fetchData(EidData data) {
 
     }
-
-    private void log(final String text) {
-    }
-
-
 }

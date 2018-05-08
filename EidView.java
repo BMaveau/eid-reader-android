@@ -46,6 +46,12 @@ public class EidView extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
         registerReceiver(mUsbReceiver, filter);
         parseIntent(getIntent());
+        handler.setLogAdded(new EidHandler.LogAdded() {
+            @Override
+            public void logAdded(String log) {
+                EidView.this.log(log);
+            }
+        });
     }
 
     static EidHandler getHandler() {

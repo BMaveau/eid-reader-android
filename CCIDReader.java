@@ -4,6 +4,7 @@ import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbEndpoint;
 import android.hardware.usb.UsbInterface;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -65,10 +66,8 @@ public class CCIDReader implements Runnable {
     private UsbDeviceConnection connection = null;
     private String log = "";
     private EidView.Error criticalError = null;
-    private TextView logView;
 
-    public CCIDReader(UsbDeviceConnection connection, UsbInterface usbInterface,
-                      @Nullable TextView logView) {
+    public CCIDReader(UsbDeviceConnection connection, UsbInterface usbInterface) {
         messagesReceived = new ArrayList<>();
         messagesToSend = new ArrayList<>();
         this.usbInterface = usbInterface;
@@ -78,7 +77,6 @@ public class CCIDReader implements Runnable {
             smartCards = new int[ccid.getNofSlots()];
             Arrays.fill(smartCards, 2);
         }
-        this.logView = logView;
     }
 
     /**
@@ -268,16 +266,10 @@ public class CCIDReader implements Runnable {
         }
     }
 
-    private void log(final String message) {
+    private void log(String message) {
         log += "\n" + message;
-        if (logView!= null) {
-            logView.post(new Runnable() {
-                @Override
-                public void run() {
-                    logView.append("\n" + message);
-                }
-            });
-        }
+        Log.i("Eid", message);
+        EidView.getHandler().obtainMessage(EidHandler.MES_LOG, message).sendToTarget();
     }
 
     private void setCriticalError(EidView.Error error) {
