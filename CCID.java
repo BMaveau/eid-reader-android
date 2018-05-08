@@ -33,8 +33,7 @@ class CCID {
 
     void setUsingClassDescriptor(byte[] descriptor) {
         voltages= EnumSet.noneOf(Voltage.class);
-        setInterrupt(descriptor[4] == 0x03);
-        setNofSlots(descriptor[4]);
+        setNofSlots(descriptor[4] + 1);
         setVoltages(descriptor[5]);
         setDefaultFrequency(Arrays.copyOfRange(descriptor, 10, 14));
         setMaxFrequency(Arrays.copyOfRange(descriptor, 14, 18));
