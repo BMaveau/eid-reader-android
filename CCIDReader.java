@@ -250,14 +250,19 @@ public class CCIDReader implements Runnable {
             log("Endpoint descriptor malformed");
             setCriticalError(EidView.Error.MALFORMED);
         } else {
-            int point= descriptor[2] % 16;
-            if (descriptor[3] == 0x03 && point < 0)
-                endIntIn = usbInterface.getEndpoint(-point);
-            else if (descriptor[2] == 0x02) {
+            int point= descriptor[2];
+            if ((point & 0x7F) > usbInterface.getEndpointCount()) {
+                log("Endpoint descriptor malformed: The endpoint number is too large: " +
+                        HelperFunc.byteToHex(descriptor[2]) + ", " + Integer.toString(point));
+                setCriticalError(EidView.Error.MALFORMED);
+            }
+            else if (descriptor[3] == 0x03 && point < 0)
+                endIntIn = usbInterface.getEndpoint(point & 0x7F);
+            else if (descriptor[3] == 0x02) {
                 if (point > 0)
-                    endBulkOut = usbInterface.getEndpoint(point);
+                    endBulkOut = usbInterface.getEndpoint(point & 0x7F);
                 else
-                    endIntIn = usbInterface.getEndpoint(point);
+                    endBulkIn = usbInterface.getEndpoint(point & 0x7F);
             }
             else {
                 log("Endpoint descriptor malformed");
