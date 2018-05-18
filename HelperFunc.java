@@ -40,6 +40,13 @@ public class HelperFunc {
         return byteBuffer.getInt();
     }
 
+    static byte[] intToBytes(int number) {
+        byte[] ret = new byte[4];
+        ByteBuffer buffer= ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(number)
+                .get(ret);
+        return ret;
+    }
+
     static boolean getBit(byte Byte, int pos) {
         return (Byte >> pos) % 2 == 1;
     }

@@ -257,12 +257,12 @@ public class CCIDReader implements Runnable {
                 setCriticalError(EidView.Error.MALFORMED);
             }
             else if (descriptor[3] == 0x03 && point < 0)
-                endIntIn = usbInterface.getEndpoint(point & 0x7F);
+                endIntIn = usbInterface.getEndpoint((point & 0x7F) - 1);
             else if (descriptor[3] == 0x02) {
                 if (point > 0)
-                    endBulkOut = usbInterface.getEndpoint(point & 0x7F);
+                    endBulkOut = usbInterface.getEndpoint((point & 0x7F) - 1);
                 else
-                    endBulkIn = usbInterface.getEndpoint(point & 0x7F);
+                    endBulkIn = usbInterface.getEndpoint((point & 0x7F) - 1);
             }
             else {
                 log("Endpoint descriptor malformed");
@@ -303,6 +303,7 @@ public class CCIDReader implements Runnable {
             log("Error sending message: " + Integer.toString(sent));
             return null;
         }
+        log("Sending message: " + HelperFunc.bytesToHex(mess));
         return receiveMessage();
     }
 
@@ -315,7 +316,7 @@ public class CCIDReader implements Runnable {
             log("Error receiving header message: " + Integer.toString(recv));
             return null;
         }
-
+        log("Received message header: " + HelperFunc.bytesToHex(header));
         BulkMessageIn mess = new BulkMessageIn(header);
         int len = HelperFunc.bytesToInt(mess.length);
         if (len != 0) {
@@ -326,6 +327,7 @@ public class CCIDReader implements Runnable {
                 log("Error receiving extra part message: " + Integer.toString(recv));
             }
             mess.extra = header;
+            log("Received message extra: " + HelperFunc.bytesToHex(header));
         }
         setStatus(Status.WAITING);
         return mess;
@@ -378,7 +380,7 @@ public class CCIDReader implements Runnable {
             return;
         byte[] mess = new byte[1];
         setStatus(Status.COMMUNICATING);
-        int recv = connection.bulkTransfer(endIntIn, mess, 2, timeout);
+        int recv = connection.bulkTransfer(endIntIn, mess, 1, timeout);
         if (recv == 1) {
             if (mess[0] == 0x50) {
                 int length = ccid.getNofSlots() % 4 + 1;
@@ -432,6 +434,10 @@ public class CCIDReader implements Runnable {
     private void setStatus(Status status) {
         this.status = status;
         EidView.handler.obtainMessage(EidHandler.MES_STA, status).sendToTarget();
+    }
+
+    private void setError(int number, String message) {
+
     }
 
     enum Status {
