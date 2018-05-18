@@ -16,7 +16,7 @@ class BulkMessageIn extends BulkMessage {
     BulkMessageIn(byte[] message) {
         super(message[5], message[6]);
         type = message[0];
-        length = Arrays.copyOfRange(message, 2, 5);
+        length = Arrays.copyOfRange(message, 1, 5);
         status = message[7];
         error = message[8];
         last = message[9];
