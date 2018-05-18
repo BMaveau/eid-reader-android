@@ -1,6 +1,7 @@
 package be.benim.eid;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.EnumSet;
 
@@ -25,6 +26,7 @@ class CCID {
     private boolean autoFrequency;
     private boolean autoDataRate;
     private EnumSet<Voltage> voltages;
+    private Exchange exchange;
 
 
     CCID(byte[] interfaceDescriptor) {
@@ -128,11 +130,19 @@ class CCID {
     }
 
     void setFeatures(byte[] features) {
-        autoParamaters= (features[2] >> 1) % 2 == 1;
-        autoActivate= (features[2] >> 2) % 2 == 1;
-        autoVolt= (features[3] >> 3) % 2 == 1;
-        autoFrequency= (features[3] >> 4) % 2 == 1;
-        autoDataRate= (features[3] >> 5) % 2 == 1;
+        autoParamaters= HelperFunc.getBit(features[0], 1);
+        autoActivate= HelperFunc.getBit(features[0], 2);
+        autoVolt= HelperFunc.getBit(features[0], 3);
+        autoFrequency= HelperFunc.getBit(features[0], 4);
+        autoDataRate= HelperFunc.getBit(features[0], 5);
+        if (HelperFunc.getBit(features[2], 0))
+            exchange = Exchange.TPDU;
+        else if (HelperFunc.getBit(features[2], 1))
+            exchange = Exchange.SHORT_APDU;
+        else if (HelperFunc.getBit(features[2], 2))
+            exchange = Exchange.EX_APDU;
+        else
+            exchange = Exchange.CHAR;
     }
 
     void setMaxLen(byte[] maxLen) {
@@ -174,11 +184,14 @@ class CCID {
                 "Automatic voltage: " + autoVolt + "\n" +
                 "Automatic frequency: " + autoFrequency + "\n" +
                 "Automatic data rate: " + autoDataRate + "\n" +
-                "Supported voltages: " + voltages;
+                "Supported voltages: " + voltages + "\n" +
+                "Data exchange: " + exchange.toString();
+
     }
 
     static int bytesToInt(byte[] bytes) {
         ByteBuffer byteBuffer= ByteBuffer.wrap(bytes);
+        byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         return byteBuffer.getInt();
     }
 
@@ -196,6 +209,21 @@ class CCID {
                 return "1.8 V";
             else
                 return "Not a voltage";
+        }
+    }
+
+    enum Exchange {
+        TPDU, SHORT_APDU, EX_APDU, CHAR;
+
+        @Override
+        public String toString() {
+            switch (this) {
+                case TPDU: return "TPDU";
+                case EX_APDU:return "Extended APDU";
+                case SHORT_APDU:return "Short APDU";
+                case CHAR: return "Character exchange";
+                default:return  "Should not happen";
+            }
         }
     }
 }
