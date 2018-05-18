@@ -82,7 +82,7 @@ public class EidView extends AppCompatActivity {
         if (intent.getAction()!= null &&
                 intent.getAction().equals(UsbManager.ACTION_USB_DEVICE_ATTACHED)) {
             log("CCID reader attached");
-            device = getIntent().getParcelableExtra(UsbManager.EXTRA_DEVICE);
+            device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
             if (device== null)
                 log("Intent returns an empty device");
             initCommunication();
@@ -118,7 +118,7 @@ n     */
                     new Intent(ACTION_USB_PERMISSION), 0));
             return;
         }
-        connection= new EidReader(this, (TextView) findViewById(R.id.text_log));
+        connection= new EidReader();
         connection.init(manager, device);
         if (data!= null)
             startCommunication();
