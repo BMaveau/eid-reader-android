@@ -60,8 +60,11 @@ public class EidHandler extends Handler {
     }
 
     private void callStateChanged(Message msg) {
-        if (stateChanged != null)
-            stateChanged.stateChanged((CCIDReader.Status) msg.obj);
+        if (stateChanged != null) {
+            CCIDReader.Status[] statuses = (CCIDReader.Status[]) msg.obj;
+            stateChanged.stateChanged(statuses[0], statuses[1]);
+        }
+
     }
 
     interface LogAdded {
@@ -73,6 +76,6 @@ public class EidHandler extends Handler {
     }
 
     interface StateChanged {
-        void stateChanged(CCIDReader.Status newStatus);
+        void stateChanged(CCIDReader.Status oldStatus, CCIDReader.Status newStatus);
     }
 }

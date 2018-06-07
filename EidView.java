@@ -12,8 +12,6 @@ import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.TextView;
 
-import com.google.gson.Gson;
-
 public class EidView extends AppCompatActivity {
     static final String INTENT_RESULT= "be.benim.eid.result";
     static final String RESULT_ERROR= "error";
@@ -21,7 +19,7 @@ public class EidView extends AppCompatActivity {
     static final String GET_DATA= "data";
     private static final String ACTION_USB_PERMISSION = "be.benim.eid.USB_PERMISSION";
 
-    static  final EidHandler handler= new EidHandler(Looper.getMainLooper());
+    static  EidHandler handler;
     private UsbDevice device= null;
     private UsbManager manager= null;
     private EidData data= null;
@@ -46,12 +44,14 @@ public class EidView extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
         registerReceiver(mUsbReceiver, filter);
         parseIntent(getIntent());
+        handler= new EidHandler(Looper.getMainLooper());
         handler.setLogAdded(new EidHandler.LogAdded() {
             @Override
             public void logAdded(String log) {
                 EidView.this.log(log);
             }
         });
+        log("Activity created.");
     }
 
     static EidHandler getHandler() {
@@ -67,7 +67,12 @@ public class EidView extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        unregisterReceiver(mUsbReceiver);
+        try {
+            unregisterReceiver(mUsbReceiver);
+        }
+        catch (IllegalArgumentException ignored) {
+
+        }
     }
 
     /**
@@ -87,12 +92,11 @@ public class EidView extends AppCompatActivity {
                 log("Intent returns an empty device");
             initCommunication();
         } else {
-            String json= EidData.getAll();
-            if (intent.getAction()!= null && intent.getAction().equals(INTENT_START))
-                json= intent.getStringExtra(GET_DATA);
-            data= new Gson().fromJson(json, EidData.class);
-            if (device!= null)
-                startCommunication();
+            if (intent.getAction() != null && intent.getAction().equals(INTENT_START))
+                data = intent.getParcelableExtra(GET_DATA);
+            else
+                data = EidData.getAll();
+            startCommunication();
         }
     }
 
@@ -101,33 +105,42 @@ public class EidView extends AppCompatActivity {
      * data is extracted from the usb device using startCommunication.
 n     */
     private void initCommunication() {
-        if (device== null) {
+        manager = manager == null ? (UsbManager) getSystemService(Context.USB_SERVICE): manager;
+        if (device== null)
             log("Communication initialised but device is null");
-            return;
-        }
-
-        if (manager== null) {
-            manager = (UsbManager) getSystemService(Context.USB_SERVICE);
-            if (manager== null) {
-                endWithError(Error.NO_MANAGER);
-                return;
-            }
-        }
-        if (!manager.hasPermission(device)) {
+        else if(manager == null)
+            endWithError(Error.NO_MANAGER);
+        else if (!manager.hasPermission(device)) {
             manager.requestPermission(device, PendingIntent.getBroadcast(this, 0,
                     new Intent(ACTION_USB_PERMISSION), 0));
-            return;
         }
-        connection= new EidReader();
-        connection.init(manager, device);
-        if (data!= null)
+        else {
+            connection= new EidReader(this);
             startCommunication();
+        }
     }
 
     private void startCommunication() {
+        if (connection!= null && data!= null) {
+            connection.setData(data);
+            handler.setStateChanged(new EidHandler.StateChanged() {
+                @Override
+                public void stateChanged(CCIDReader.Status oldStatus, CCIDReader.Status newStatus) {
+                    if (oldStatus == CCIDReader.Status.INITIALISING &&
+                            newStatus== CCIDReader.Status.IDLE)
+                        connection.fetchData();
+                    if (oldStatus == CCIDReader.Status.COMMUNICATING &&
+                            newStatus == CCIDReader.Status.IDLE)
+                        connection.processData();
+                    if (newStatus == CCIDReader.Status.ERROR)
+                        connection.handleError();
+                }
+            });
+            connection.init(manager, device);
+        }
     }
 
-    private void log(String text) {
+    void log(String text) {
         ((TextView) findViewById(R.id.text_log)).append("\n" + text);
     }
 
@@ -140,6 +153,6 @@ n     */
     }
 
     enum Error{
-        NO_PERMISSION, NO_MANAGER, MALFORMED
+        NO_PERMISSION, NO_MANAGER, MALFORMED, IO_ERROR
     }
 }

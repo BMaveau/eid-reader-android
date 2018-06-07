@@ -3,9 +3,9 @@ package be.benim.eid;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbEndpoint;
 import android.hardware.usb.UsbInterface;
+import android.os.Process;
 import android.support.annotation.Nullable;
 import android.util.Log;
-import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,12 +18,7 @@ import java.util.Arrays;
 
 public class CCIDReader implements Runnable {
     /**
-     * Status field of the CCID Reader. Possibilities are:
-     * - INITIALISING -> Detecting the properties of the CCID
-     * - IDLE -> No messages to send
-     * - WAITING -> Waiting for Smart Card
-     * - COMMUNICATING -> Communicating with device
-     * - ERROR -> an error occurred during communication with smart card.
+     * Status field of the CCID Reader.
      */
     private Status status= Status.IDLE;
     /**
@@ -54,7 +49,7 @@ public class CCIDReader implements Runnable {
      * The index after the last message in messagesToSend that was sent.
      */
     private int lastIndex = 0;
-    private int timeout = 1000;
+    private int timeout = 5000;
     /**
      * The sequence number of the last message that was send.
      */
@@ -72,20 +67,28 @@ public class CCIDReader implements Runnable {
         messagesToSend = new ArrayList<>();
         this.usbInterface = usbInterface;
         this.connection = connection;
-        parseDescriptors(connection.getRawDescriptors());
-        if (status != Status.ERROR_CRITICAL ) {
-            smartCards = new int[ccid.getNofSlots()];
-            Arrays.fill(smartCards, 2);
-        }
     }
 
     /**
-     * Adds a message to te queue of messages. The sequence number and the slot number (if active
+     * Adds a message to the queue of messages. The sequence number and the slot number (if active
      * slot is not -2) is set by this class.
      * @return The index of this message
      */
     int addMessageToQueue(BulkMessageOut mess) {
         messagesToSend.add(mess);
+        return messagesToSend.size() - 1;
+    }
+
+    /**
+     * Adds a message to the queue of messages, and sends all the messages in the queue (including
+     * this message). maxIndex is updated if it's not -1.
+     * @param mess the message to add to the queue.
+     * @return The index of the added message.
+     */
+    int addMessageAndSend(BulkMessageOut mess) {
+        addMessageToQueue(mess);
+        if (maxIndex != -1)
+            maxIndex = messagesToSend.size();
         return messagesToSend.size() - 1;
     }
 
@@ -143,21 +146,36 @@ public class CCIDReader implements Runnable {
 
     @Override
     public void run() {
-        getStatus();
+        android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+        setStatus(Status.INITIALISING);
+        parseDescriptors(connection.getRawDescriptors());
+        if (status != Status.ERROR_CRITICAL ) {
+            smartCards = new int[ccid.getNofSlots()];
+            Arrays.fill(smartCards, 2);
+        }
+        getStatusSlots();
+
         while (status != Status.ERROR_CRITICAL && status != Status.QUIT) {
+            setStatus(Status.COMMUNICATING);
             if (isSmartCardPresent()) {
                 if (smartCards[activeSlot] == 1)
                     powerOn();
                 int end = maxIndex == -1 ? messagesToSend.size() : maxIndex;
-                for (int i = lastIndex; i < end; i++)
+                for (int i = lastIndex; i < end; i++) {
                     messagesReceived.add(i, sendMessage(messagesToSend.get(i)));
-            }
+                }
+                setStatus(Status.IDLE);
+            } else
+                setStatus(Status.WAITING);
             try {
                 Thread.sleep(500);
             } catch (InterruptedException e) {
                 log("Sleep interrupted");
             }
         }
+        connection.releaseInterface(usbInterface);
+        connection.close();
+        log("CCIDReader stopped");
     }
 
     /**
@@ -170,6 +188,7 @@ public class CCIDReader implements Runnable {
     /**
      * Sends the powerOn message to the smart card in the given slot.
      * @param slot A number between zero and the number of slots (not included)
+     * TODO: automatically determine correct voltage
      */
     public void powerOn(int slot) {
         if (slot < 0 || slot >= ccid.getNofSlots()) {
@@ -178,14 +197,19 @@ public class CCIDReader implements Runnable {
                     ").");
             return;
         }
-        BulkMessageIn response = sendMessage(new BulkOutPowerOn((byte) slot, (byte) 0x00));
+        BulkMessageIn response = sendMessage(new BulkOutPowerOn((byte) slot, (byte) 0x00,
+                (byte) 0x01));
         if (response == null)
             return;
-        log(response.toString());
+        log(response.toHexString());
+    }
+
+    void quitLoop() {
+        setStatus(Status.QUIT);
+        EidView.getHandler().obtainMessage(EidHandler.MES_STA, status).sendToTarget();
     }
 
     private void parseDescriptors(byte[] descriptors) {
-        setStatus(Status.INITIALISING);
         int index= descriptors[0];
         if (index> descriptors.length || descriptors[index] + index> descriptors.length)
             setCriticalError(EidView.Error.MALFORMED);
@@ -205,7 +229,6 @@ public class CCIDReader implements Runnable {
             parseEndpointDescriptor(Arrays.copyOfRange(descriptors, index,
                     index+descriptors[index]));
         }
-        setStatus(Status.WAITING);
     }
 
 
@@ -294,12 +317,11 @@ public class CCIDReader implements Runnable {
         if (status == Status.ERROR || status == Status.ERROR_CRITICAL)
             return null;
 
-        setStatus(Status.COMMUNICATING);
         messageOut.sequence = ++lastSequence;
         byte[] mess = messageOut.getMessage();
         int sent = connection.bulkTransfer(endBulkOut, mess, mess.length, timeout);
         if (sent != mess.length) {
-            status = Status.ERROR_CRITICAL;
+            setCriticalError(EidView.Error.IO_ERROR);
             log("Error sending message: " + Integer.toString(sent));
             return null;
         }
@@ -309,27 +331,31 @@ public class CCIDReader implements Runnable {
 
     @Nullable
     private BulkMessageIn receiveMessage() {
-        byte[] header = new byte[10];
-        int recv = connection.bulkTransfer(endBulkIn, header, 10, timeout);
-        if (recv != 10) {
-            status = Status.ERROR_CRITICAL;
+        byte[] messBytes = new byte[1024];
+        int recv = connection.bulkTransfer(endBulkIn, messBytes, 1024, timeout);
+        if (recv < 0) {
+            setCriticalError(EidView.Error.IO_ERROR);
             log("Error receiving header message: " + Integer.toString(recv));
             return null;
+        } else if (recv < 10) {
+            setCriticalError(EidView.Error.IO_ERROR);
+            log("The header message is too short.\n" + Integer.toString(recv) + " " +
+                    HelperFunc.bytesToHex(messBytes));
         }
-        log("Received message header: " + HelperFunc.bytesToHex(header));
-        BulkMessageIn mess = new BulkMessageIn(header);
+        BulkMessageIn mess = new BulkMessageIn(messBytes);
         int len = HelperFunc.bytesToInt(mess.length);
-        if (len != 0) {
-            header = new byte[len];
-            recv = connection.bulkTransfer(endBulkIn, header, len, timeout);
+        if (len > recv-10 ) {
+            len -= 1014;
+            messBytes = new byte[1024];
+            recv = connection.bulkTransfer(endBulkIn, messBytes, 1024, timeout);
+            messBytes = Arrays.copyOfRange(messBytes, 0, recv);
             if (recv != len) {
                 status = Status.ERROR_CRITICAL;
                 log("Error receiving extra part message: " + Integer.toString(recv));
             }
-            mess.extra = header;
-            log("Received message extra: " + HelperFunc.bytesToHex(header));
+            mess.addExtra(messBytes);
         }
-        setStatus(Status.WAITING);
+        log(mess.toHexString());
         return mess;
     }
 
@@ -337,14 +363,14 @@ public class CCIDReader implements Runnable {
      * Sends status messages to all slots and sets the response to the variable smartcards
      * @return True if a smart card is present and powered in any slot.
      */
-    private boolean getStatus() {
+    private boolean getStatusSlots() {
         if (status == Status.ERROR_CRITICAL || status == Status.ERROR)
             return false;
         boolean found = false;
         for (int i= 0; i < ccid.getNofSlots(); i++) {
             BulkOutSlot mess = new BulkOutSlot((byte) i, (byte) 0x00);
             BulkMessageIn rec = sendMessage(mess);
-            if (rec != null && rec.type == -1 && rec.slot == (byte) i) {
+            if (rec != null && rec.type == (byte) 0x81 && rec.slot == (byte) i) {
                 smartCards[i] = rec.getSmartCardStatus();
                 found |= smartCards[i] == 0;
             } else {
@@ -372,14 +398,13 @@ public class CCIDReader implements Runnable {
             }
         }
         else
-            return getStatus();
+            return getStatusSlots();
     }
 
     private void listenInterrupt() {
         if (status == Status.ERROR_CRITICAL || status == Status.ERROR)
             return;
         byte[] mess = new byte[1];
-        setStatus(Status.COMMUNICATING);
         int recv = connection.bulkTransfer(endIntIn, mess, 1, timeout);
         if (recv == 1) {
             if (mess[0] == 0x50) {
@@ -411,8 +436,8 @@ public class CCIDReader implements Runnable {
                 log("Unknown message received.");
                 status = Status.ERROR;
             }
-        }
-        setStatus(Status.WAITING);
+        } else
+            log("no interrupt");
     }
 
     /**
@@ -432,15 +457,49 @@ public class CCIDReader implements Runnable {
     }
 
     private void setStatus(Status status) {
+        if (this.status == Status.ERROR_CRITICAL || this.status == Status.QUIT)
+            return;
+        Status[] statuses = new Status[] {this.status, status};
         this.status = status;
-        EidView.handler.obtainMessage(EidHandler.MES_STA, status).sendToTarget();
+        EidView.handler.obtainMessage(EidHandler.MES_STA, statuses).sendToTarget();
     }
 
     private void setError(int number, String message) {
 
     }
 
+    /**
+     * The state of the CCIDReader
+     */
     enum Status {
-        INITIALISING, IDLE, WAITING, COMMUNICATING, ERROR, ERROR_CRITICAL, QUIT
+        /**
+         * Detecting the properties of the CCID
+         */
+        INITIALISING,
+        /**
+         * Smart card present but no messages to send
+         */
+        IDLE,
+        /**
+         * Waiting for Smart Card
+         */
+        WAITING,
+        /**
+         * Communicating with device
+         */
+        COMMUNICATING,
+        /**
+         * An non-critical error occurred during communication with smart card. The user should
+         * fix or ignore the error.
+         */
+        ERROR,
+        /**
+         * A critical error occurred, the loop has ended.
+         */
+        ERROR_CRITICAL,
+        /**
+         * The loop will quit.
+         */
+        QUIT
     }
 }

@@ -2,6 +2,7 @@ package be.benim.eid;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 
 /**
  * Created by benjamin on 18.04.18.
@@ -41,10 +42,14 @@ public class HelperFunc {
     }
 
     static byte[] intToBytes(int number) {
+        return intToByte(number, 4);
+    }
+
+    static byte[] intToByte(int number, int len) {
         byte[] ret = new byte[4];
-        ByteBuffer buffer= ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(number)
-                .get(ret);
-        return ret;
+        ((ByteBuffer) ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN)
+                .putInt(number).position(0)).get(ret);
+        return Arrays.copyOfRange(ret, 0, len);
     }
 
     static boolean getBit(byte Byte, int pos) {

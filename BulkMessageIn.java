@@ -20,7 +20,21 @@ class BulkMessageIn extends BulkMessage {
         status = message[7];
         error = message[8];
         last = message[9];
-        extra = null;
+        if (message.length > 10)
+            extra = Arrays.copyOfRange(message, 10, message.length);
+        else
+            extra = null;
+    }
+
+    void addExtra(byte[] extra) {
+        if (this.extra == null)
+            this.extra = extra;
+        else {
+            byte[] temp = new byte[extra.length + this.extra.length];
+            System.arraycopy(this.extra, 0, temp, 0, this.extra.length);
+            System.arraycopy(extra, 0, temp, this.extra.length, extra.length);
+            this.extra = temp;
+        }
     }
 
     String getError() {
@@ -29,6 +43,13 @@ class BulkMessageIn extends BulkMessage {
 
     String getType() {
         return getType(type);
+    }
+
+    String toHexString() {
+        return "Type: " + HelperFunc.byteToHex(type) + "\tlength: " + HelperFunc.bytesToHex(length)
+                + "\tStatus: " + HelperFunc.byteToHex(status) + "\tError: " +
+                HelperFunc.byteToHex(error) +  "\tlast: " + HelperFunc.byteToHex(last) +
+                (extra != null ? "\nData: " + HelperFunc.bytesToHex(extra) : "");
     }
 
     String getString() {
