@@ -186,7 +186,8 @@ public class CCIDReader implements Runnable {
     }
 
     /**
-     * Sends the powerOn message to the smart card in the given slot.
+     * Sends the powerOn message to the smart card in the given slot. Based on the ATR, the
+     * parameters are set.
      * @param slot A number between zero and the number of slots (not included)
      * TODO: automatically determine correct voltage
      */
@@ -199,14 +200,20 @@ public class CCIDReader implements Runnable {
         }
         BulkMessageIn response = sendMessage(new BulkOutPowerOn((byte) slot, (byte) 0x00,
                 (byte) 0x01));
-        if (response == null)
-            return;
-        log(response.toHexString());
+        if (response == null) {
+            log("No response to power on.");
+            setCriticalError(EidView.Error.IO_ERROR);
+        } else {
+            log(response.toHexString());
+            SmartCard card = new SmartCard(response.extra);
+            response = sendMessage(new BulkMessageSetParam((byte) slot, card.generateT0()));
+            if (response != null)
+                log(response.toHexString());
+        }
     }
 
     void quitLoop() {
         setStatus(Status.QUIT);
-        EidView.getHandler().obtainMessage(EidHandler.MES_STA, status).sendToTarget();
     }
 
     private void parseDescriptors(byte[] descriptors) {
@@ -342,7 +349,7 @@ public class CCIDReader implements Runnable {
             log("The header message is too short.\n" + Integer.toString(recv) + " " +
                     HelperFunc.bytesToHex(messBytes));
         }
-        BulkMessageIn mess = new BulkMessageIn(messBytes);
+        BulkMessageIn mess = new BulkMessageIn(Arrays.copyOfRange(messBytes, 0, recv));
         int len = HelperFunc.bytesToInt(mess.length);
         if (len > recv-10 ) {
             len -= 1014;
