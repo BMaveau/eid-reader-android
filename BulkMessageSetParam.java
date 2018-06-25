@@ -19,8 +19,7 @@ public class BulkMessageSetParam extends BulkMessageOut {
     }
 
     public BulkMessageSetParam(byte slot, byte[] param) {
-        super(slot, (byte) 0X00);
-        this.param = param;
+        this(slot, Protocol.T0, param);
     }
 
     @Override

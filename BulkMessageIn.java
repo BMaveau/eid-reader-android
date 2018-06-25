@@ -128,12 +128,16 @@ class BulkMessageIn extends BulkMessage {
         }
     }
 
+    /**
+     * Determines the smart card status from the status byte:
+     * @return An integer indicating the status of the smart card
+     * 0: Smart card present and active
+     * 1: Smart card present but not active
+     * 2: No smart card present
+     */
     int getSmartCardStatus() {
-        if ((status & 0x01) == 1)
-            return 1;
-        if (((status >> 1) & 0x01) == 1)
+        if (HelperFunc.getBit(status, 1))
             return 2;
-        else
-            return 0;
+        return HelperFunc.getBit(status, 0) ? 1 : 0;
     }
 }
