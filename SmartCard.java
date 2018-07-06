@@ -24,7 +24,7 @@ public class SmartCard {
         if (getBit(atr[0], 4)) {
 //            TA1
             index++;
-            fi = (byte) (atr[index] >> 4);
+            fi = (byte) ((atr[index] >>> 4) & 0X0F);
             di = (byte) (atr[index] & 0X0F);
         }
         if (getBit(atr[0], 5))
@@ -46,13 +46,26 @@ public class SmartCard {
         }
     }
 
+
+    /**
+     * Generate the parameters for T0 communication
+     * @return an array of bytes with the required parameters
+     * TODO: set fi and di from ATR instead of default value.
+     */
     byte[] generateT0() {
         byte[] dataStructure = new byte[5];
-        dataStructure[0] = (byte) (fi << 4 + di);
+//        dataStructure[0] = (byte) ((fi << 4) + di);
+        dataStructure[0] = 0X11;
         dataStructure[1] = 0x00;
         dataStructure[2] = (byte) N;
         dataStructure[3] = (byte) wi;
         dataStructure[4] = 0X00;
         return dataStructure;
+    }
+
+    @Override
+    public String toString() {
+        return "Smartcard: fi= " + HelperFunc.byteToHex(fi) + " di= " + HelperFunc.byteToHex(di) +
+                " N= " + Integer.toString(N) + " wi= " + Integer.toString(wi);
     }
 }

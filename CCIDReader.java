@@ -156,12 +156,15 @@ public class CCIDReader implements Runnable {
         getStatusSlots();
 
         while (status != Status.ERROR_CRITICAL && status != Status.QUIT) {
-            setStatus(Status.COMMUNICATING);
             if (isSmartCardPresent()) {
-                if (smartCards[activeSlot] == 1)
+                if (smartCards[activeSlot] == 1) {
+                    setStatus(Status.INITIALISING);
                     powerOn();
+                    setStatus(Status.IDLE);
+                }
                 int end = maxIndex == -1 ? messagesToSend.size() : maxIndex;
                 for (int i = lastIndex; i < end; i++) {
+                    setStatus(Status.COMMUNICATING);
                     messagesReceived.add(i, sendMessage(messagesToSend.get(i)));
                 }
                 setStatus(Status.IDLE);
@@ -204,11 +207,9 @@ public class CCIDReader implements Runnable {
             log("No response to power on.");
             setCriticalError(EidView.Error.IO_ERROR);
         } else {
-            log(response.toHexString());
             SmartCard card = new SmartCard(response.extra);
-            response = sendMessage(new BulkMessageSetParam((byte) slot, card.generateT0()));
-            if (response != null)
-                log(response.toHexString());
+            log(card.toString());
+            sendMessage(new BulkMessageSetParam((byte) slot, card.generateT0()));
         }
     }
 
