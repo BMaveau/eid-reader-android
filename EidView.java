@@ -12,6 +12,9 @@ import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.TextView;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public class EidView extends AppCompatActivity {
     static final String INTENT_RESULT= "be.benim.eid.result";
     static final String RESULT_ERROR= "error";
@@ -22,7 +25,7 @@ public class EidView extends AppCompatActivity {
     static  EidHandler handler;
     private UsbDevice device= null;
     private UsbManager manager= null;
-    private EidData data= null;
+    private EidRequest data= null;
     private EidReader connection;
     private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
@@ -95,7 +98,7 @@ public class EidView extends AppCompatActivity {
             if (intent.getAction() != null && intent.getAction().equals(INTENT_START))
                 data = intent.getParcelableExtra(GET_DATA);
             else
-                data = EidData.getAll();
+                data = EidRequest.getAll();
             startCommunication();
         }
     }
@@ -122,21 +125,30 @@ n     */
 
     private void startCommunication() {
         if (connection!= null && data!= null) {
-            connection.setData(data);
+            connection.setRequest(data);
             handler.setStateChanged(new EidHandler.StateChanged() {
                 @Override
                 public void stateChanged(CCIDReader.Status oldStatus, CCIDReader.Status newStatus) {
-                    if (oldStatus == CCIDReader.Status.INITIALISING &&
+                    if ((oldStatus == CCIDReader.Status.INITIALISING ||
+                            oldStatus == CCIDReader.Status.COMMUNICATING) &&
                             newStatus== CCIDReader.Status.IDLE)
-                        connection.fetchData();
-                    if (oldStatus == CCIDReader.Status.COMMUNICATING &&
-                            newStatus == CCIDReader.Status.IDLE)
-                        connection.processData();
-                    if (newStatus == CCIDReader.Status.ERROR)
+                        connection.next();
+                    else if (newStatus == CCIDReader.Status.ERROR)
                         connection.handleError();
+                    else if (newStatus == CCIDReader.Status.QUIT)
+                        end();
                 }
             });
             connection.init(manager, device);
+        }
+    }
+
+    void end() {
+        JSONObject object = connection.getResult();
+        try {
+            log(object.toString(2));
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
     }
 

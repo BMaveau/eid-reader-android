@@ -163,10 +163,13 @@ public class CCIDReader implements Runnable {
                     setStatus(Status.IDLE);
                 }
                 int end = maxIndex == -1 ? messagesToSend.size() : maxIndex;
+//                log("lastindex= " + Integer.toString(lastIndex) + " end= " +
+//                        Integer.toString(end) + " Maxindex= " + maxIndex);
                 for (int i = lastIndex; i < end; i++) {
                     setStatus(Status.COMMUNICATING);
                     messagesReceived.add(i, sendMessage(messagesToSend.get(i)));
                 }
+                lastIndex = end;
                 setStatus(Status.IDLE);
             } else
                 setStatus(Status.WAITING);
@@ -207,6 +210,7 @@ public class CCIDReader implements Runnable {
             log("No response to power on.");
             setCriticalError(EidView.Error.IO_ERROR);
         } else {
+            smartCards[slot] = 0;
             SmartCard card = new SmartCard(response.extra);
             log(card.toString());
             sendMessage(new BulkMessageSetParam((byte) slot, card.generateT0()));
@@ -412,32 +416,28 @@ public class CCIDReader implements Runnable {
     private void listenInterrupt() {
         if (status == Status.ERROR_CRITICAL || status == Status.ERROR)
             return;
-        byte[] mess = new byte[1];
-        int recv = connection.bulkTransfer(endIntIn, mess, 1, timeout);
-        if (recv == 1) {
+        byte[] mess = new byte[1024];
+        int recv = connection.bulkTransfer(endIntIn, mess, 1024, timeout);
+        if (recv >= 1) {
             if (mess[0] == 0x50) {
-                int length = ccid.getNofSlots() % 4 + 1;
-                mess = new byte[length];
-                recv =  connection.bulkTransfer(endIntIn, mess, length, timeout);
-                if (recv != 4) {
+                int length = ccid.getNofSlots() / 4 + 1;
+                if (recv < length + 1) {
                     log("The received message is too short.\nThe number of slots is: " +
                             Integer.toString(ccid.getNofSlots()) + "\nThe received message has " +
-                            "length: " + Integer.toString(length));
+                            "length: " + Integer.toString(recv));
                     status = Status.ERROR;
                     return;
                 }
-                alterState(mess);
+                alterState(Arrays.copyOfRange(mess, 0, 5));
             } else if (mess[0] == 0x51) {
-                mess = new byte[3];
-                recv = connection.bulkTransfer(endIntIn, mess, 3, timeout);
-                if (recv != 3) {
+                if (recv < 4) {
                     log("The received hardware error message is too short:\n" +
                             Integer.toString(recv));
                     status = Status.ERROR;
                     return;
                 }
-                log("The message with sequence " + Byte.toString(mess[1]) + " sent to slot "
-                        + Byte.toString(mess[0]) + " has caused a hardware error.");
+                log("The message with sequence " + Byte.toString(mess[2]) + " sent to slot "
+                        + Byte.toString(mess[1]) + " has caused a hardware error.");
                 status = Status.ERROR;
             }
             else {
