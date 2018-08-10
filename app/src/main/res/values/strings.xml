@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Eid</string>
+
+    <!--Strings voor rn-->
+    <string name="stru">Versie bestandsstructuur</string>
+    <string name="canu">Kaart nummer</string>
+    <string name="chnu">Chip nummer</string>
+    <string name="cvbe">Geldig vanaf</string>
+    <string name="cven">Geldig tot</string>
+    <string name="gmun">Uitgegeven in</string>
+    <string name="nanu">rijksregister</string>
+    <string name="name">Naam</string>
+    <string name="give">Voorna(a)m(en)</string>
+    <string name="thir">Eerste letter van derde naam</string>
+    <string name="nati">Nationaliteit</string>
+    <string name="birt">Geboorteplaats</string>
+    <string name="bird">Geboortedatum</string>
+    <string name="gend">Geslacht</string>
+    <string name="nobl">Adel</string>
+    <string name="docu">Type document</string>
+    <string name="spec">Speciale status</string>
+    <string name="hpic">Hash foto</string>
+    <string name="unkn">Onbekend</string>
+
+    <!--Strings voor adres-->
+    <string name="stre">Straat en nummer</string>
+    <string name="zipc">Postcode</string>
+    <string name="muni">Gemeente</string>
+</resources>
