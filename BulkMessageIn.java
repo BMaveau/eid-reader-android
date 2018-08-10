@@ -46,9 +46,10 @@ class BulkMessageIn extends BulkMessage {
     }
 
     String toHexString() {
-        return "Type: " + HelperFunc.byteToHex(type) + "\tlength: " + HelperFunc.bytesToHex(length)
-                + "\tStatus: " + HelperFunc.byteToHex(status) + "\tError: " +
-                HelperFunc.byteToHex(error) +  "\tlast: " + HelperFunc.byteToHex(last) +
+        return "Type: " + HelperFunc.byteToHex(type) + "\tlength: " + Integer.toString(
+                HelperFunc.bytesToInt(length)) + "\tStatus: " + HelperFunc.byteToHex(status) +
+                "\tError: " + HelperFunc.byteToHex(error) +  "\tlast: " +
+                HelperFunc.byteToHex(last) +
                 (extra != null ? "\nData: " + HelperFunc.bytesToHex(extra) : "");
     }
 

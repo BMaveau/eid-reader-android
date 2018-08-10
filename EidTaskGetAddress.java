@@ -10,14 +10,14 @@ import java.util.Arrays;
 import java.util.EnumSet;
 
 /**
- * Created by benjamin on 07.07.18.
+ * Created by benjamin on 16.07.18.
  */
 
-public class EidTaskGetID extends EidTaskRead {
+public class EidTaskGetAddress extends EidTaskRead {
 
-    public EidTaskGetID(Context context, CCIDReader reader, JSONObject result) {
-        super(context, reader, result, 0XDF01, 0X4031);
-        name = "GetId";
+    public EidTaskGetAddress(Context context, CCIDReader reader, JSONObject result) {
+        super(context, reader, result, 0XDF01, 0X4033);
+        name = "GetAdd";
     }
 
     @Override
@@ -44,7 +44,7 @@ public class EidTaskGetID extends EidTaskRead {
             }
         }
         try {
-            result.put("ID", res);
+            result.put("Address", res);
         } catch (JSONException e) {
             ((EidView) context).log("Error putting subJSon into JSON:\n" +
                     e.getMessage());
@@ -54,23 +54,9 @@ public class EidTaskGetID extends EidTaskRead {
 
     enum Field {
         FILE_STRUC(R.string.stru, 0x00, Encoding.BINARY, 0),
-        CART_NUM(R.string.canu, 0X01, Encoding.ASCII),
-        CHIP_NIM(R.string.chnu, 0X02, Encoding.BINARY),
-        VALID_FROM(R.string.cvbe, 0X03, Encoding.ASCII),
-        VALID_TO(R.string.cven, 0X04, Encoding.ASCII),
-        MUNI_DELIV(R.string.gmun, 0X05),
-        RRN(R.string.nanu, 0X06, Encoding.ASCII),
-        NAME(R.string.name, 0X07),
-        GIVEN_NAME(R.string.give, 0X08, "-"),
-        FIRST_CHAR(R.string.thir, 0X09),
-        NATIONALITY(R.string.nati, 0X0A),
-        BIRTH_LOCATION(R.string.birt, 0X0B),
-        BIRTH_DATE(R.string.bird, 0X0C),
-        SEX(R.string.gend, 0X0D, Encoding.ASCII),
-        NOBLE_CONIDTION(R.string.nobl, 0X0E, ""),
-        DOCUMENT_TYPE(R.string.docu, 0X0F, Encoding.ASCII),
-        SPECIAL_STATUS(R.string.spec, 0X10, Encoding.ASCII, "0"),
-        HASH_PHOTO(R.string.hpic, 0X11, Encoding.BINARY),
+        STREET_NUMB(R.string.stre, 0X01),
+        ZIP(R.string.zipc, 0X02, Encoding.ASCII),
+        MUNICIPALITY(R.string.muni, 0X03),
         UNKNOWN(R.string.unkn, -0X01, Encoding.ASCII);
 
         int stringId;
@@ -89,7 +75,7 @@ public class EidTaskGetID extends EidTaskRead {
             this(stringId, tag, Encoding.UTF8, standard);
         }
 
-        Field(int stringId, int tag, Encoding encoding) {
+        Field(int stringId, byte tag, Encoding encoding) {
             this(stringId, tag, encoding, null);
         }
 
@@ -105,6 +91,5 @@ public class EidTaskGetID extends EidTaskRead {
             return Field.UNKNOWN;
         }
     }
-
 
 }

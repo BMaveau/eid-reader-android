@@ -19,23 +19,23 @@ public class SmartCard {
      * TODO: add support for other transmission protocols.
      */
     public SmartCard(byte[] atr) {
-        int index = 0;
-        int K = atr[0] & 0X0F;
-        if (getBit(atr[0], 4)) {
+        int index = 1;
+        int K = atr[1] & 0X0F;
+        if (getBit(atr[1], 4)) {
 //            TA1
             index++;
             fi = (byte) ((atr[index] >>> 4) & 0X0F);
             di = (byte) (atr[index] & 0X0F);
         }
-        if (getBit(atr[0], 5))
+        if (getBit(atr[1], 5))
 //            TB1
             index++;
-        if (getBit(atr[0], 6)) {
+        if (getBit(atr[1], 6)) {
 //            TC1
             index++;
             N = atr[index];
         }
-        if (getBit(atr[0], 7)) {
+        if (getBit(atr[1], 7)) {
 //            TD1
             index++;
             if (getBit(atr[index], 6)) {
@@ -54,8 +54,8 @@ public class SmartCard {
      */
     byte[] generateT0() {
         byte[] dataStructure = new byte[5];
-//        dataStructure[0] = (byte) ((fi << 4) + di);
-        dataStructure[0] = 0X11;
+        dataStructure[0] = (byte) ((fi << 4) + di);
+//        dataStructure[0] = 0X11;
         dataStructure[1] = 0x00;
         dataStructure[2] = (byte) N;
         dataStructure[3] = (byte) wi;

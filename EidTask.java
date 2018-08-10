@@ -43,8 +43,23 @@ public abstract class EidTask {
 
     @Nullable static EidTask next(Context context, EidRequest request, CCIDReader reader,
                                   JSONObject result) {
-        if (request.getID && !result.has("GetId"))
+        if ((request.getID || request.checkID || request.checkPic) && !result.has("GetId"))
             return new EidTaskGetID(context, reader, result);
+        else if ((request.checkID || request.checkAddress || request.checkPic)
+                && ! result.has("SignId"))
+            return new EidTaskRead(context, reader, result, 0XDF01, 0X4032,
+                    "SignId");
+        else if ((request.getAddress || request.checkAddress) && ! result.has("GetAdd"))
+            return new EidTaskGetAddress(context, reader, result);
+        else if (request.checkAddress && !result.has("SignAdd"))
+            return new EidTaskRead(context, reader, result, 0XDF01, 0X4034,
+                    "SignAdd");
+        else if (request.getPic && ! result.has("GetPic"))
+            return new EidTaskRead(context, reader, result, 0XDF01, 0X4035,
+                    "GetPic");
+        else if ((request.checkID || request.checkAddress || request.checkPic) &&
+                !result.has("Cert#8(RN)"))
+            return new EidTaskCheckSignature(context, reader, result, request);
         else
             return null;
     }
@@ -60,6 +75,38 @@ public abstract class EidTask {
      */
     abstract boolean run();
     abstract void process();
+
+    boolean checkMessage(@Nullable BulkMessageIn mess) {
+        if (mess == null)
+            return false;
+
+        boolean status = true;
+        int len = 0;
+        if (mess.extra != null && (len = mess.extra.length) >=2)
+            status = (mess.extra[len - 2] == (byte) 0X90 && mess.extra[len - 1] == 0X00);
+        return mess.type == (byte) 0X80 && mess.error == 0X00 && status;
+    }
+
+    boolean checkStatusBytes(BulkMessageIn mess, int sw1, int sw2) {
+        int len;
+        return mess != null && mess.type == (byte) 0X80 && mess.error == 0X00 &&
+                mess.extra != null && (len = mess.extra.length) > 1 &&
+                mess.extra[len-2] == (byte) sw1 && mess.extra[len-1] == (byte) sw2;
+    }
+
+    boolean checkStatusBytes(BulkMessageIn mess, int sw1) {
+        int len;
+        return mess != null && mess.type == (byte) 0X80 && mess.error == 0X00 &&
+                mess.extra != null && (len = mess.extra.length) > 1 &&
+                mess.extra[len-2] == (byte) sw1;
+    }
+
+    protected boolean quit(BulkMessageIn mess) {
+        done = true;
+        error = "Selecting/reading the file failed" +
+                (mess == null ? "." : ": " + mess.toHexString());
+        return false;
+    }
 
     protected BulkOutXfg getResponse(int length) {
         return new BulkOutXfg(BulkOutXfg.LevelParameter.BEG_AND_END, new byte[] { 0x00,

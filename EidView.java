@@ -106,7 +106,7 @@ public class EidView extends AppCompatActivity {
     /**
      * Initialises the communication to the usb device. If the data field is not empty, the
      * data is extracted from the usb device using startCommunication.
-n     */
+     */
     private void initCommunication() {
         manager = manager == null ? (UsbManager) getSystemService(Context.USB_SERVICE): manager;
         if (device== null)

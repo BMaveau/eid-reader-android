@@ -49,7 +49,9 @@ class EidReader {
             task.init();
         } else if (!task.run()){
             task.process();
-            reader.quitLoop();
+            if (!task.error.isEmpty())
+                reader.quitLoop();
+            next();
         }
     }
 

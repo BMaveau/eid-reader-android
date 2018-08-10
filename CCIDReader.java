@@ -174,7 +174,7 @@ public class CCIDReader implements Runnable {
             } else
                 setStatus(Status.WAITING);
             try {
-                Thread.sleep(500);
+                Thread.sleep(100);
             } catch (InterruptedException e) {
                 log("Sleep interrupted");
             }
