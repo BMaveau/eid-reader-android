@@ -54,6 +54,10 @@ public class CCIDReader implements Runnable {
      * The sequence number of the last message that was send.
      */
     private byte lastSequence = -1;
+    /**
+     * The maximum number of time extensions that is granted before an error is thrown.
+     */
+    private int maxNofTimeExtensions = 30;
     private UsbEndpoint endBulkOut = null;
     private UsbEndpoint endBulkIn =  null;
     private UsbEndpoint endIntIn = null;
@@ -338,7 +342,13 @@ public class CCIDReader implements Runnable {
             return null;
         }
         log("Sending message: " + HelperFunc.bytesToHex(mess));
-        return receiveMessage();
+        BulkMessageIn recv = null;
+        int i;
+        for (i = 0 ; i < maxNofTimeExtensions && (recv = receiveMessage()) != null &&
+                recv.status == (byte) 0X80; i++) {}
+        if (i == maxNofTimeExtensions)
+            setError(0, "Max number of time extensions reached");
+        return recv;
     }
 
     @Nullable
@@ -417,7 +427,7 @@ public class CCIDReader implements Runnable {
         if (status == Status.ERROR_CRITICAL || status == Status.ERROR)
             return;
         byte[] mess = new byte[1024];
-        int recv = connection.bulkTransfer(endIntIn, mess, 1024, timeout);
+        int recv = connection.bulkTransfer(endIntIn, mess, 1024, 100);
         if (recv >= 1) {
             if (mess[0] == 0x50) {
                 int length = ccid.getNofSlots() / 4 + 1;

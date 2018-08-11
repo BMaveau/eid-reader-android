@@ -4,6 +4,8 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
 /**
@@ -31,6 +33,15 @@ public class EidRequest implements Parcelable {
         eidRequest.checkID = true;
         eidRequest.checkAddress = true;
         eidRequest.checkPic = true;
+        try {
+            byte[] testMessage = "Dit is een test".getBytes();
+            MessageDigest digest = MessageDigest.getInstance("SHA-1");
+            byte[] messageSha1 = digest.digest(testMessage);
+            eidRequest.addDataToEncrypt(new ToEncrypt(messageSha1, Algorithm.RSA_PKCS1_SHA1,
+                    true));
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
         return eidRequest;
     }
 

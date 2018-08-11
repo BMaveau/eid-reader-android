@@ -60,6 +60,9 @@ public abstract class EidTask {
         else if ((request.checkID || request.checkAddress || request.checkPic) &&
                 !result.has("Cert#8(RN)"))
             return new EidTaskCheckSignature(context, reader, result, request);
+        else if (!(request.getToEncrypt().isEmpty()) &&
+                !result.has("Encrypt0"))
+            return new EidTaskEncrypt(context, reader, result, request);
         else
             return null;
     }
