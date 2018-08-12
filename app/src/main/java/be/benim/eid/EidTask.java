@@ -63,6 +63,18 @@ public abstract class EidTask {
         else if (!(request.getToEncrypt().isEmpty()) &&
                 !result.has("Encrypt0"))
             return new EidTaskEncrypt(context, reader, result, request);
+        else if (request.getCertAuth && !result.has("Cert#2"))
+            return new EidTaskRead(context, reader, result, 0XDF00, 0X5038,
+                    "Cert#2");
+        else if (request.getCertNonRep && !result.has("Cert#3"))
+            return new EidTaskRead(context, reader, result, 0XDF00, 0X5039,
+                    "Cert#3");
+        else if (request.getCertCA && !result.has("Cert#4"))
+            return new EidTaskRead(context, reader, result, 0XDF00, 0X503A,
+                    "Cert#4");
+        else if (request.getCertRoot && !result.has("Cert#6"))
+            return new EidTaskRead(context, reader, result, 0XDF00, 0X503B,
+                    "Cert#6");
         else
             return null;
     }

@@ -1,5 +1,7 @@
 package be.benim.eid;
 
+import android.util.Base64;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
@@ -61,6 +63,14 @@ public class HelperFunc {
                     + Character.digit(s.charAt(i+1), 16));
         }
         return data;
+    }
+
+    static byte[] decodeString(String string) {
+        return Base64.decode(string, Base64.DEFAULT);
+    }
+
+    static String encodeString(byte[] bytes) {
+        return Base64.encodeToString(bytes, Base64.DEFAULT);
     }
 
     static boolean getBit(byte Byte, int pos) {

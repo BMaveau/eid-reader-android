@@ -102,13 +102,10 @@ public class EidTaskRead extends EidTask {
         byte[] data = response.toByteArray();
         try {
             if (error.isEmpty()) {
-                if (this instanceof EidTaskGetAddress) {
-                    int i;
-                    for (i = data.length-1; i >= 0 && data[i] == 0X00; i--) {}
-                    result.put(name, Base64.encodeToString(
-                            Arrays.copyOfRange(data, 0, i+1), Base64.DEFAULT));
-                } else
-                    result.put(name, Base64.encodeToString(data, Base64.DEFAULT));
+                int i;
+                for (i = data.length-1; i >= 0 && data[i] == 0X00; i--) {}
+                result.put(name, Base64.encodeToString(
+                        Arrays.copyOfRange(data, 0, i+1), Base64.DEFAULT));
             }
             else
                 result.put(name, error);

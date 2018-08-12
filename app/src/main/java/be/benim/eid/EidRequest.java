@@ -19,6 +19,10 @@ public class EidRequest implements Parcelable {
     boolean checkID;
     boolean checkAddress;
     boolean checkPic;
+    boolean getCertAuth;
+    boolean getCertNonRep;
+    boolean getCertCA;
+    boolean getCertRoot;
     private ArrayList<ToEncrypt> toEncrypt;
 
     public EidRequest() {
@@ -33,12 +37,18 @@ public class EidRequest implements Parcelable {
         eidRequest.checkID = true;
         eidRequest.checkAddress = true;
         eidRequest.checkPic = true;
+        eidRequest.getCertAuth = true;
+        eidRequest.getCertNonRep = true;
+        eidRequest.getCertCA = true;
+        eidRequest.getCertRoot = true;
         try {
             byte[] testMessage = "Dit is een test".getBytes();
             MessageDigest digest = MessageDigest.getInstance("SHA-1");
             byte[] messageSha1 = digest.digest(testMessage);
             eidRequest.addDataToEncrypt(new ToEncrypt(messageSha1, Algorithm.RSA_PKCS1_SHA1,
                     true));
+//            eidRequest.addDataToEncrypt(new ToEncrypt(messageSha1, Algorithm.RSA_PKCS1_SHA1,
+//                    false));
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
@@ -68,6 +78,10 @@ public class EidRequest implements Parcelable {
         parcel.writeInt(checkID ? 1 : 0);
         parcel.writeInt(checkAddress ? 1 : 0);
         parcel.writeInt(checkPic ? 1 : 0);
+        parcel.writeInt(getCertAuth ? 1 : 0);
+        parcel.writeInt(getCertNonRep ? 1 : 0);
+        parcel.writeInt(getCertCA ? 1 : 0);
+        parcel.writeInt(getCertRoot ? 1 : 0);
         parcel.writeSerializable(toEncrypt);
     }
 
@@ -81,6 +95,10 @@ public class EidRequest implements Parcelable {
             eidRequest.checkID = (in.readInt() == 1);
             eidRequest.checkAddress = (in.readInt() == 1);
             eidRequest.checkPic = (in.readInt() == 1);
+            eidRequest.getCertAuth = (in.readInt() == 1);
+            eidRequest.getCertNonRep = (in.readInt() == 1);
+            eidRequest.getCertCA = (in.readInt() == 1);
+            eidRequest.getCertRoot = (in.readInt() == 1);
             eidRequest.toEncrypt = in.readArrayList(null);
             return eidRequest;
         }
